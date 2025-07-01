@@ -16,34 +16,32 @@ provider "azurerm" {
   subscription_id = "822b42b7-8868-4c34-bcde-4b8f525bbe89"
 }
 
-///////////////////////////////////////////////////RANDOM_STRING///////////////////////////////////////////////////
+
 resource "random_string" "suffix" {
   length  = 6
   upper   = false
   special = false
 }
 
-///////////////////////////////////////////////////RESOURCE_GROUP///////////////////////////////////////////////////
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
   tags     = var.tags
 }
 
-///////////////////////////////////////////////////CLIENT_CONFIG///////////////////////////////////////////////////
+
 data "azurerm_client_config" "current" {}
 
-///////////////////////////////////////////////////CONTAINER_REGISTRY///////////////////////////////////////////////////
 resource "azurerm_container_registry" "acr" {
   name                = "${var.acr_name}${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = var.acr_sku
-  admin_enabled       = true # Cambiado a true para permitir acceso desde container group
+  admin_enabled       = true 
   tags                = var.tags
 }
 
-///////////////////////////////////////////////////STORAGE_ACCOUNT///////////////////////////////////////////////////
+
 resource "azurerm_storage_account" "logs_sa" {
   name                     = "logs${random_string.suffix.result}"
   resource_group_name      = azurerm_resource_group.rg.name
@@ -60,7 +58,6 @@ resource "azurerm_storage_container" "log_container" {
   container_access_type = "private"
 }
 
-///////////////////////////////////////////////////KEY_VAULT///////////////////////////////////////////////////
 resource "azurerm_key_vault" "kv" {
   name                        = "kv-${random_string.suffix.result}"
   location                    = azurerm_resource_group.rg.location
@@ -86,7 +83,7 @@ resource "azurerm_key_vault_secret" "storage_key" {
   key_vault_id = azurerm_key_vault.kv.id
 }
 
-///////////////////////////////////////////////////LOG_ANALYTICS///////////////////////////////////////////////////
+
 resource "azurerm_log_analytics_workspace" "law" {
   name                = "logs-${random_string.suffix.result}"
   location            = azurerm_resource_group.rg.location
@@ -96,7 +93,7 @@ resource "azurerm_log_analytics_workspace" "law" {
   tags                = var.tags
 }
 
-///////////////////////////////////////////////////CONTAINER_INSTANCE///////////////////////////////////////////////////
+
 resource "azurerm_container_group" "app" {
   name                = "aci-${var.app_name}-${random_string.suffix.result}"
   location            = azurerm_resource_group.rg.location
@@ -149,7 +146,7 @@ resource "azurerm_container_group" "app" {
   }
 }
 
-///////////////////////////////////////////////////ROLE_ASSIGNMENTS///////////////////////////////////////////////////
+
 resource "azurerm_role_assignment" "aci_acr_pull" {
   scope                = azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
