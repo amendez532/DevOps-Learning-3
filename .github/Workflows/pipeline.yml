@@ -1,0 +1,123 @@
+name: Build, Validate, Deploy and Monitor
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: npm install
+      working-directory: ./Node_App_Container
+
+    - name: Run Lint
+      run: npm run lint
+      working-directory: ./Node_App_Container
+      continue-on-error: true
+
+    - name: Run Tests
+      run: npm test
+      working-directory: ./Node_App_Container
+      continue-on-error: true
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Azure Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: myappacrcq4gr9.azurecr.io
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./Node_App_Container
+        file: ./Node_App_Container/Dockerfile
+        push: true
+        tags: myappacrcq4gr9.azurecr.io/demo-app:latest
+
+    - name: Scan image for vulnerabilities
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: myappacrcq4gr9.azurecr.io/demo-app:latest
+        format: table
+        exit-code: 0
+
+  terraform:
+    needs: build-test-scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform fmt check
+      run: terraform fmt -check
+      working-directory: ./Terraform
+
+    - name: Terraform init
+      run: terraform init
+      working-directory: ./Terraform
+
+    - name: Terraform validate
+      run: terraform validate
+      working-directory: ./Terraform
+
+    - name: Terraform plan
+      run: terraform plan -out=tfplan
+      working-directory: ./Terraform
+
+    - name: Terraform apply (main branch only)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: terraform apply -auto-approve
+      working-directory: ./Terraform
+      env:
+        ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+        ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+        ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+        ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+
+  azure-validation:
+    needs: terraform
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Check Storage Account
+      run: az storage account show --name logs${{ secrets.RANDOM_SUFFIX }} --resource-group my-app-resources
+
+    - name: Check Key Vault
+      run: az keyvault show --name kv-${{ secrets.RANDOM_SUFFIX }} --resource-group my-app-resources
+
+    - name: Check Key Vault Secret
+      run: az keyvault secret show --vault-name kv-${{ secrets.RANDOM_SUFFIX }} --name storage-account-key
+
+    - name: Query Log Analytics for recent logs
+      run: |
+        az monitor log-analytics query \
+          --workspace logs-${{ secrets.RANDOM_SUFFIX }} \
+          --query "AppTraces | where TimeGenerated > ago(5m) | take 5"

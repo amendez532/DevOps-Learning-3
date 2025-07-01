@@ -1,0 +1,12 @@
+{
+  "name": "azure-docker-app",
+  "version": "1.0.0",
+  "description": "Aplicación simple para demo en Azure con Docker",
+  "main": "App/Node_App.js",
+  "scripts": {
+    "start": "node Node_App.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
