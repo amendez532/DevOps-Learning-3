@@ -78,3 +78,14 @@ variable "enable_purge_protection" {
   type        = bool
   default     = false
 }
+
+variable "acr_sp_client_id" {
+  description = "Client ID del App Registration (Service Principal) para autenticarse en el ACR"
+  type        = string
+}
+
+variable "acr_sp_client_secret" {
+  description = "Client Secret del App Registration (Service Principal) para autenticarse en el ACR"
+  type        = string
+  sensitive   = true
+}

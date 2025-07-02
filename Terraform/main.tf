@@ -16,7 +16,6 @@ provider "azurerm" {
   subscription_id = "822b42b7-8868-4c34-bcde-4b8f525bbe89"
 }
 
-
 resource "random_string" "suffix" {
   length  = 6
   upper   = false
@@ -29,7 +28,6 @@ resource "azurerm_resource_group" "rg" {
   tags     = var.tags
 }
 
-
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_container_registry" "acr" {
@@ -37,10 +35,9 @@ resource "azurerm_container_registry" "acr" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = var.acr_sku
-  admin_enabled       = true
+  admin_enabled       = false
   tags                = var.tags
 }
-
 
 resource "azurerm_storage_account" "logs_sa" {
   name                     = "logs${random_string.suffix.result}"
@@ -54,7 +51,7 @@ resource "azurerm_storage_account" "logs_sa" {
 
 resource "azurerm_storage_container" "log_container" {
   name                  = "applogs"
-  storage_account_name  = azurerm_storage_account.logs_sa.name
+  storage_account_id    = azurerm_storage_account.logs_sa.id
   container_access_type = "private"
 }
 
@@ -83,7 +80,6 @@ resource "azurerm_key_vault_secret" "storage_key" {
   key_vault_id = azurerm_key_vault.kv.id
 }
 
-
 resource "azurerm_log_analytics_workspace" "law" {
   name                = "logs-${random_string.suffix.result}"
   location            = azurerm_resource_group.rg.location
@@ -92,7 +88,6 @@ resource "azurerm_log_analytics_workspace" "law" {
   retention_in_days   = var.log_retention_days
   tags                = var.tags
 }
-
 
 resource "azurerm_container_group" "app" {
   name                = "aci-${var.app_name}-${random_string.suffix.result}"
@@ -109,8 +104,8 @@ resource "azurerm_container_group" "app" {
 
   image_registry_credential {
     server   = azurerm_container_registry.acr.login_server
-    username = azurerm_container_registry.acr.admin_username
-    password = azurerm_container_registry.acr.admin_password
+    username = var.acr_sp_client_id
+    password = var.acr_sp_client_secret
   }
 
   container {
@@ -144,13 +139,6 @@ resource "azurerm_container_group" "app" {
       workspace_key = azurerm_log_analytics_workspace.law.primary_shared_key
     }
   }
-}
-
-
-resource "azurerm_role_assignment" "aci_acr_pull" {
-  scope                = azurerm_container_registry.acr.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_container_group.app.identity[0].principal_id
 }
 
 resource "azurerm_role_assignment" "aci_kv_secrets" {
