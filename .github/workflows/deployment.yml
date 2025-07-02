@@ -71,6 +71,15 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
+    # Limpiar caché de Terraform para asegurarnos de que no haya problemas de configuración
+    - name: Clean Terraform cache
+      run: terraform init -reconfigure
+      working-directory: ./Terraform
+
+    - name: Format Terraform files
+      run: terraform fmt
+      working-directory: ./Terraform
+
     - name: Terraform fmt check
       run: terraform fmt -check
       working-directory: ./Terraform
