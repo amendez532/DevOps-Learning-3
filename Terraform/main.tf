@@ -2,7 +2,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version =  "~>4.0"
+      version = "~>4.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -37,7 +37,7 @@ resource "azurerm_container_registry" "acr" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = var.acr_sku
-  admin_enabled       = true 
+  admin_enabled       = true
   tags                = var.tags
 }
 
@@ -59,14 +59,14 @@ resource "azurerm_storage_container" "log_container" {
 }
 
 resource "azurerm_key_vault" "kv" {
-  name                        = "kv-${random_string.suffix.result}"
-  location                    = azurerm_resource_group.rg.location
-  resource_group_name         = azurerm_resource_group.rg.name
-  tenant_id                   = data.azurerm_client_config.current.tenant_id
-  sku_name                    = "standard"
-  purge_protection_enabled    = var.enable_purge_protection
-  soft_delete_retention_days  = 7
-  tags                        = var.tags
+  name                       = "kv-${random_string.suffix.result}"
+  location                   = azurerm_resource_group.rg.location
+  resource_group_name        = azurerm_resource_group.rg.name
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  purge_protection_enabled   = var.enable_purge_protection
+  soft_delete_retention_days = 7
+  tags                       = var.tags
 
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
