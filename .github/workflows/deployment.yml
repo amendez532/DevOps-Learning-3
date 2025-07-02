@@ -114,7 +114,7 @@ jobs:
     - name: Azure Login
       uses: azure/login@v1
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        creds: ${{ secrets.AZURE_APP_REGISTRATION_CREDENTIALS }}
 
     - name: Check Storage Account
       run: az storage account show --name logs${{ secrets.RANDOM_SUFFIX }} --resource-group my-app-resources
